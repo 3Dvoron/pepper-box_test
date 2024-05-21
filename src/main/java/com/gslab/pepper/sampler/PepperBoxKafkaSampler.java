@@ -16,10 +16,13 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.SslConfigs;
-import org.apache.kafka.common.protocol.SecurityProtocol;
+//import org.apache.kafka.common.protocol.SecurityProtocol;
+import org.apache.kafka.common.header.internals.RecordHeader;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.log.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.kafka.common.header.Headers;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -48,6 +51,8 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
 
     private boolean key_message_flag = false;
     private static final Logger log = LoggingManager.getLoggerForClass();
+    Headers headers = new RecordHeaders();
+
 
     /**
      * Set default parameters and their values
@@ -70,7 +75,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
         defaultParameters.addArgument(ProducerConfig.ACKS_CONFIG, ProducerKeys.ACKS_CONFIG_DEFAULT);
         defaultParameters.addArgument(ProducerConfig.SEND_BUFFER_CONFIG, ProducerKeys.SEND_BUFFER_CONFIG_DEFAULT);
         defaultParameters.addArgument(ProducerConfig.RECEIVE_BUFFER_CONFIG, ProducerKeys.RECEIVE_BUFFER_CONFIG_DEFAULT);
-        defaultParameters.addArgument(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.PLAINTEXT.name);
+//        defaultParameters.addArgument(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SecurityProtocol.PLAINTEXT.name);
         defaultParameters.addArgument(PropsKeys.KEYED_MESSAGE_KEY, PropsKeys.KEYED_MESSAGE_DEFAULT);
         defaultParameters.addArgument(PropsKeys.MESSAGE_KEY_PLACEHOLDER_KEY, PropsKeys.MSG_KEY_PLACEHOLDER);
         defaultParameters.addArgument(PropsKeys.MESSAGE_VAL_PLACEHOLDER_KEY, PropsKeys.MSG_PLACEHOLDER);
@@ -101,9 +106,8 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
      */
     @Override
     public void setupTest(JavaSamplerContext context) {
-
         Properties props = new Properties();
-
+        headers.add(new RecordHeader("content-type","application/cloudevents+json; charset=UTF-8".getBytes(StandardCharsets.UTF_8)));
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, getBrokerServers(context));
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, context.getParameter(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG));
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, context.getParameter(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG));
@@ -165,6 +169,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
     @Override
     public SampleResult runTest(JavaSamplerContext context) {
 
+
         SampleResult sampleResult = new SampleResult();
         sampleResult.sampleStart();
         Object message_val = JMeterContextService.getContext().getVariables().getObject(msg_val_placeHolder);
@@ -172,7 +177,7 @@ public class PepperBoxKafkaSampler extends AbstractJavaSamplerClient {
         try {
             if (key_message_flag) {
                 Object message_key = JMeterContextService.getContext().getVariables().getObject(msg_key_placeHolder);
-                producerRecord = new ProducerRecord<String, Object>(topic, message_key.toString(), message_val);
+                producerRecord = new ProducerRecord<String, Object>(topic,0, message_key.toString(), message_val,headers );
             } else {
                 producerRecord = new ProducerRecord<String, Object>(topic, message_val);
             }
